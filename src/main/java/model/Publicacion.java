@@ -1,4 +1,8 @@
-public class publicacion {
+package model;
+
+import java.util.List;
+
+public class Publicacion {
     private String contenido;
     private int likes;
     private int shares;
@@ -18,6 +22,4 @@ public class publicacion {
     public void compartir(){
 
     }
-
-
 }
