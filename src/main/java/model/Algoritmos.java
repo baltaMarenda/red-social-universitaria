@@ -63,5 +63,58 @@ public class Algoritmos {
         }
         return total;
     }
+    //---- dijkstra
+
+    public static Map<User, Integer> dijkstra(Grafo grafo, User origen) {
+        // Mapa para guardar la distancia mínima desde el origen a cada usuario
+        Map<User, Integer> distancias = new HashMap<>();
+        // Priorizamos los usuarios según la distancia acumulada más corta
+        PriorityQueue<NodoDistancia> cola = new PriorityQueue<>(
+                Comparator.comparingInt(NodoDistancia::getDistancia));
+
+        // Inicializamos todas las distancias como "infinito"
+        for (User u : grafo.getUsuarios()) {
+            distancias.put(u, Integer.MAX_VALUE);
+        }
+
+        // La distancia al origen es 0
+        distancias.put(origen, 0);
+        cola.add(new NodoDistancia(origen, 0));
+
+        while (!cola.isEmpty()) {
+            NodoDistancia actual = cola.poll();
+            User uActual = actual.getUser();
+
+            // Si ya encontramos un camino más corto, ignoramos este
+            if (actual.getDistancia() > distancias.get(uActual)) continue;
+
+            // Revisamos los adyacentes
+            for (Arista arista : grafo.getAdyacentes(uActual)) {
+                User vecino = arista.getDestino();
+                int nuevaDistancia = distancias.get(uActual) + arista.getPeso();
+
+                // Si el nuevo camino es más corto, actualizamos
+                if (nuevaDistancia < distancias.get(vecino)) {
+                    distancias.put(vecino, nuevaDistancia);
+                    cola.add(new NodoDistancia(vecino, nuevaDistancia));
+                }
+            }
+        }
+        return distancias;
+    }
+
+    // Clase interna auxiliar para la PriorityQueue
+    private static class NodoDistancia {
+        private User user;
+        private int distancia;
+
+        public NodoDistancia(User user, int distancia) {
+            this.user = user;
+            this.distancia = distancia;
+        }
+
+        public User getUser() { return user; }
+        public int getDistancia() { return distancia; }
+    }
 
 }
