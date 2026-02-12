@@ -1,7 +1,7 @@
 package controller;
 
 import model.*;
-import java.util.List;
+import java.util.*;
 
 public class Main {
 
@@ -12,6 +12,8 @@ public class Main {
         User u2 = new User("Manuela", "Poustis", "456", "manu@mail.com");
         User u3 = new User("Matias", "Calles", "789", "mati@mail.com");
         User u4 = new User("Sofia", "Lopez", "111", "sofia@mail.com");
+        User u5 = new User("Raul", "SinAmigos", "222", "Raul@mail.com");
+        User u6 = new User("Jazmin", "PocosAmigos", "333", "Jazmin@mail.com");
 
 
         grafo.agregarAmigo(u1, u2, 4);
@@ -19,40 +21,31 @@ public class Main {
         grafo.agregarAmigo(u2, u3, 5);
         grafo.agregarAmigo(u2, u4, 10);
         grafo.agregarAmigo(u3, u4, 3);
+        grafo.agregarAmigo(u5, u6, 1);
+        grafo.agregarAmigo(u4, u5, 2);
 
-        System.out.println("=== 1. CONECTIVIDAD MÍNIMA (Algoritmo de Prim) ===");
+        System.out.println("=== 1. CONECTIVIDAD MINIMA (Algoritmo de Prim) ===");
         try {
             List<Arista> mst = Algoritmos.prim(grafo);
-
-            int costoTotal = 0;
-
-            for (Arista a : mst) {
-                System.out.println(
-                        a.getOrigen().getNombre() + " - " +
-                                a.getDestino().getNombre() +
-                                " | Peso: " + a.getPeso()
-                );
-                costoTotal += a.getPeso();
-            }
-
-            System.out.println("Costo total mínimo: " + costoTotal);
-
+            Impresion.conectividadMinima(mst);
         } catch (IllegalStateException e) {
             System.out.println(e.getMessage());
         }
 
-        System.out.println("\n=== 2. RECOMENDACIÓN DE AMIGOS (Algoritmo de Dijkstra) ===");
-        // Calculamos distancias desde u1
+        System.out.println("\n=== 2. RECOMENDACION DE AMIGOS (Algoritmo de Dijkstra) ===");
         User usuarioRaiz = u1;
         Map<User, Integer> distancias = Algoritmos.dijkstra(grafo, usuarioRaiz);
 
-        System.out.println("Caminos más cortos desde " + usuarioRaiz.getNombre() + ":");
-        distancias.forEach((usuario, distancia) -> {
-            if (!usuario.equals(usuarioRaiz)) {
-                String sugerencia = (distancia <= 5) ? "[Sugerencia Alta]" : "[Sugerencia Baja]";
-                System.out.println("-> " + usuario.getNombre() + " | Distancia: " + distancia + " " + sugerencia);
-            }
-        });
+        Impresion.recomendacionAmigos(usuarioRaiz, distancias);
+
+
+
+
+        boolean conexo = Algoritmos.esConexo(grafo);
+        System.out.println("\n=== 3. CONEXION DEL GRAFO ===");
+        System.out.println("El grafo es conexo: " + conexo);
+
+
 
     }
 }

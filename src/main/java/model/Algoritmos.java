@@ -117,4 +117,37 @@ public class Algoritmos {
         public int getDistancia() { return distancia; }
     }
 
+
+    public static boolean esConexo(Grafo grafo) {
+        Set<User> usuarios = grafo.getUsuarios();
+
+
+        if (usuarios.isEmpty()) {
+            return false;
+        }
+
+        // Recorrido BFS desde un usuario cualquiera
+        Set<User> visitados = new HashSet<>();
+        Queue<User> cola = new LinkedList<>();
+
+        User inicial = usuarios.iterator().next();
+        visitados.add(inicial);
+        cola.add(inicial);
+
+        while (!cola.isEmpty()) {
+            User actual = cola.poll();
+            for (Arista arista : grafo.getAdyacentes(actual)) {
+                User vecino = arista.getDestino();
+                if (!visitados.contains(vecino)) {
+                    visitados.add(vecino);
+                    cola.add(vecino);
+                }
+            }
+        }
+
+        // El grafo es conexo si todos los usuarios fueron alcanzados
+        return visitados.size() == usuarios.size();
+    }
+
+    
 }
