@@ -3,58 +3,101 @@ package model;
 import java.util.*;
 
 public class Algoritmos {
-   public static List<Arista> prim(Grafo grafo) {
 
+    /** Resultado de Prim sobre una componente: el MST (lista de aristas) y los nodos de esa componente. */
+    private static class ResultadoPrim {
+        final List<Arista> arbol;
+        final Set<User> visitados;
 
-       List<Arista> arbolMinimo = new ArrayList<>();
-       Set<User> visitados = new HashSet<>();
+        ResultadoPrim(List<Arista> arbol, Set<User> visitados) {
+            this.arbol = arbol;
+            this.visitados = visitados;
+        }
+    }
 
-       PriorityQueue<Arista> cola = new PriorityQueue<>(
-               Comparator.comparingInt(Arista::getPeso));
+    /**
+     * Ejecuta Prim desde un nodo dado. Devuelve el MST de la componente que contiene a ese nodo
+     * y el conjunto de nodos visitados (toda la componente).
+     */
+    private static ResultadoPrim primDesde(Grafo grafo, User inicial) {
+        List<Arista> arbolMinimo = new ArrayList<>();
+        Set<User> visitados = new HashSet<>();
+        PriorityQueue<Arista> cola = new PriorityQueue<>(Comparator.comparingInt(Arista::getPeso));
 
-       //Candidatos
-       Set<User> usuarios = grafo.getUsuarios();
+        visitados.add(inicial);
+        List<Arista> adyInicial = grafo.getAdyacentes(inicial);
+        if (adyInicial != null) {
+            cola.addAll(adyInicial);
+        }
 
-       if (usuarios.isEmpty()){
-           return arbolMinimo;
-       }
-       //Empieza desde cualquier nodo
-       User inicial = usuarios.iterator().next();
-       visitados.add(inicial);
+        while (!cola.isEmpty()) {
+            Arista aristaMin = cola.poll();
+            User destino = aristaMin.getDestino();
 
-       //Se agrega sus aristas a la cola
-       cola.addAll(grafo.getAdyacentes(inicial));
+            if (!visitados.contains(destino)) {
+                arbolMinimo.add(aristaMin);
+                visitados.add(destino);
+                List<Arista> adyDestino = grafo.getAdyacentes(destino);
+                if (adyDestino != null) {
+                    for (Arista a : adyDestino) {
+                        if (!visitados.contains(a.getDestino())) {
+                            cola.add(a);
+                        }
+                    }
+                }
+            }
+        }
 
-       //Muentras no se haya trabajado con todos los nodos
-       while (!cola.isEmpty() && visitados.size() < usuarios.size()){
-           //Arista de menor peso
-           Arista aristaMin = cola.poll();
+        return new ResultadoPrim(arbolMinimo, visitados);
+    }
 
-           User destino = aristaMin.getDestino();
+    /**
+     * Resultado de Prim: bosque (lista de MST por componente) y nodo inicial de cada árbol.
+     */
+    public static class ResultadoPrimCompleto {
+        private final List<List<Arista>> bosque;
+        private final List<User> nodosIniciales;
 
+        ResultadoPrimCompleto(List<List<Arista>> bosque, List<User> nodosIniciales) {
+            this.bosque = bosque;
+            this.nodosIniciales = nodosIniciales;
+        }
 
-           if (!visitados.contains(destino)){
-               //Se agrega la arista de menor peso al arbol
-               arbolMinimo.add(aristaMin);
-               //Marcamos el nodo como visitado
-               visitados.add(destino);
+        public List<List<Arista>> getBosque() { return bosque; }
+        public List<User> getNodosIniciales() { return nodosIniciales; }
+    }
 
-               //Agregamos nuevas aristas candidatas
-               for (Arista a: grafo.getAdyacentes(destino)){
-                   if(!visitados.contains(a.getDestino())){
-                       cola.add(a);
-                   }
-               }
-           }
-       }
+    /**
+     * Árbol(es) de expansión mínima: una lista de aristas por cada componente conexa,
+     * y el nodo inicial desde el que se ejecutó Prim en cada componente.
+     */
+    public static ResultadoPrimCompleto prim(Grafo grafo) {
+        List<List<Arista>> bosque = new ArrayList<>();
+        List<User> nodosIniciales = new ArrayList<>();
+        Set<User> restantes = new HashSet<>(grafo.getUsuarios());
 
-       //Validacion por si el grafo no es conexo
-       if (visitados.size() != usuarios.size()){
-           throw new IllegalStateException("El grafo no es conexo, no es posible construir el arbol");
-       }
+        if (restantes.isEmpty()) {
+            return new ResultadoPrimCompleto(bosque, nodosIniciales);
+        }
 
-       return arbolMinimo;
-   }
+        while (!restantes.isEmpty()) {
+            User inicio = restantes.iterator().next();
+            nodosIniciales.add(inicio);
+            ResultadoPrim r = primDesde(grafo, inicio);
+            bosque.add(r.arbol);
+            restantes.removeAll(r.visitados);
+        }
+
+        return new ResultadoPrimCompleto(bosque, nodosIniciales);
+    }
+
+    /**
+     * Devuelve el nodo inicial de cada árbol MST (uno por componente).
+     * Sirve para sugerir que esas personas se conecten y unan las componentes.
+     */
+    public static List<User> sugerirAmigos(Grafo grafo) {
+        return prim(grafo).getNodosIniciales();
+    }
 
     public static int costoTotal(List<Arista> aristas) {
         int total = 0;
@@ -118,36 +161,18 @@ public class Algoritmos {
     }
 
 
+    /**
+     * Indica si el grafo es conexo: hay exactamente un árbol de expansión mínima (una componente).
+     * Usa el algoritmo Prim por componentes para contar cuántos MST hay.
+     */
     public static boolean esConexo(Grafo grafo) {
-        Set<User> usuarios = grafo.getUsuarios();
-
-
-        if (usuarios.isEmpty()) {
-            return false;
-        }
-
-        // Recorrido BFS desde un usuario cualquiera
-        Set<User> visitados = new HashSet<>();
-        Queue<User> cola = new LinkedList<>();
-
-        User inicial = usuarios.iterator().next();
-        visitados.add(inicial);
-        cola.add(inicial);
-
-        while (!cola.isEmpty()) {
-            User actual = cola.poll();
-            for (Arista arista : grafo.getAdyacentes(actual)) {
-                User vecino = arista.getDestino();
-                if (!visitados.contains(vecino)) {
-                    visitados.add(vecino);
-                    cola.add(vecino);
-                }
-            }
-        }
-
-        // El grafo es conexo si todos los usuarios fueron alcanzados
-        return visitados.size() == usuarios.size();
+        return prim(grafo).getBosque().size() == 1;
     }
+
+
+
+
+
 
     
 }
