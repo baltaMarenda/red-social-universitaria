@@ -2,9 +2,16 @@ package model;
 
 import java.util.*;
 
+/**
+ * Algoritmos de grafos aplicados a la red social: Prim (árbol de expansión mínima por componente),
+ * Dijkstra (distancias mínimas desde un origen), verificación de conexidad y sugerencia de reconexión.
+ */
 public class Algoritmos {
 
-    /** Resultado de Prim sobre una componente: el MST (lista de aristas) y los nodos de esa componente. */
+    /**
+     * Resultado interno de ejecutar Prim sobre una sola componente: la lista de aristas del MST
+     * y el conjunto de nodos que pertenecen a esa componente (todos los alcanzables desde el inicial).
+     */
     private static class ResultadoPrim {
         final List<Arista> arbol;
         final Set<User> visitados;
@@ -16,12 +23,17 @@ public class Algoritmos {
     }
 
     /**
-     * Ejecuta Prim desde un nodo dado. Devuelve el MST de la componente que contiene a ese nodo
-     * y el conjunto de nodos visitados (toda la componente).
+     * Ejecuta el algoritmo de Prim a partir de un único nodo. Obtiene el MST de la componente
+     * que contiene a ese nodo y el conjunto de todos los nodos de esa componente.
+     *
+     * @param grafo   grafo no dirigido con pesos en las aristas
+     * @param inicial nodo desde el cual se inicia Prim (puede ser cualquiera de la componente)
+     * @return el MST como lista de aristas y el set de nodos visitados (toda la componente)
      */
     private static ResultadoPrim primDesde(Grafo grafo, User inicial) {
         List<Arista> arbolMinimo = new ArrayList<>();
         Set<User> visitados = new HashSet<>();
+        // Cola de prioridad: siempre se extrae la arista de menor peso entre las que unen visitados con no visitados.
         PriorityQueue<Arista> cola = new PriorityQueue<>(Comparator.comparingInt(Arista::getPeso));
 
         visitados.add(inicial);
@@ -31,12 +43,15 @@ public class Algoritmos {
         }
 
         while (!cola.isEmpty()) {
+            // Saca la arista de menor peso.
             Arista aristaMin = cola.poll();
             User destino = aristaMin.getDestino();
 
+            // Solo se usa si el destino aún no estaba en el árbol (evita ciclos).
             if (!visitados.contains(destino)) {
                 arbolMinimo.add(aristaMin);
                 visitados.add(destino);
+                // Añade a la cola las aristas que van de destino hacia nodos no visitados (nuevos candidatos).
                 List<Arista> adyDestino = grafo.getAdyacentes(destino);
                 if (adyDestino != null) {
                     for (Arista a : adyDestino) {
@@ -52,7 +67,8 @@ public class Algoritmos {
     }
 
     /**
-     * Resultado de Prim: bosque (lista de MST por componente) y nodo inicial de cada árbol.
+     * Resultado público de prim(grafo): el bosque (una lista de MST, uno por componente)
+     * y la lista de nodos iniciales (uno por componente, el nodo desde el que se ejecutó Prim).
      */
     public static class ResultadoPrimCompleto {
         private final List<List<Arista>> bosque;
@@ -68,8 +84,9 @@ public class Algoritmos {
     }
 
     /**
-     * Árbol(es) de expansión mínima: una lista de aristas por cada componente conexa,
-     * y el nodo inicial desde el que se ejecutó Prim en cada componente.
+     * Calcula un árbol de expansión mínima por cada componente conexa del grafo.
+     * Si el grafo es conexo, devuelve una sola lista de aristas; si está desconectado, una lista por componente.
+     * También devuelve el nodo inicial usado en cada ejecución de Prim (útil para sugerir reconexión).
      */
     public static ResultadoPrimCompleto prim(Grafo grafo) {
         List<List<Arista>> bosque = new ArrayList<>();
@@ -80,6 +97,7 @@ public class Algoritmos {
             return new ResultadoPrimCompleto(bosque, nodosIniciales);
         }
 
+        // Mientras quede algún nodo sin asignar a ningún árbol, hay una nueva componente: se ejecuta Prim desde uno de ellos.
         while (!restantes.isEmpty()) {
             User inicio = restantes.iterator().next();
             nodosIniciales.add(inicio);
@@ -92,13 +110,16 @@ public class Algoritmos {
     }
 
     /**
-     * Devuelve el nodo inicial de cada árbol MST (uno por componente).
-     * Sirve para sugerir que esas personas se conecten y unan las componentes.
+     * Devuelve un representante (nodo inicial de Prim) por cada componente.
+     * Sirve para sugerir que esas personas se conecten y así unir las componentes (reconexión de la red).
      */
     public static List<User> sugerirAmigos(Grafo grafo) {
         return prim(grafo).getNodosIniciales();
     }
 
+    /**
+     * Suma los pesos de una lista de aristas (ej. costo total de un MST).
+     */
     public static int costoTotal(List<Arista> aristas) {
         int total = 0;
         for (Arista a : aristas) {
@@ -106,21 +127,24 @@ public class Algoritmos {
         }
         return total;
     }
-    //---- dijkstra
 
+    /**
+     * Algoritmo de Dijkstra: calcula la distancia mínima desde un usuario origen hasta todos los demás.
+     * Las aristas tienen peso; la "distancia" es la suma de pesos del camino.
+     *
+     * @param grafo  grafo no dirigido con pesos
+     * @param origen usuario desde el cual se calculan las distancias
+     * @return mapa usuario -> distancia mínima desde origen (origen tiene distancia 0)
+     */
     public static Map<User, Integer> dijkstra(Grafo grafo, User origen) {
-        // Mapa para guardar la distancia mínima desde el origen a cada usuario
         Map<User, Integer> distancias = new HashMap<>();
-        // Priorizamos los usuarios según la distancia acumulada más corta
         PriorityQueue<NodoDistancia> cola = new PriorityQueue<>(
                 Comparator.comparingInt(NodoDistancia::getDistancia));
 
-        // Inicializamos todas las distancias como "infinito"
         for (User u : grafo.getUsuarios()) {
             distancias.put(u, Integer.MAX_VALUE);
         }
 
-        // La distancia al origen es 0
         distancias.put(origen, 0);
         cola.add(new NodoDistancia(origen, 0));
 
@@ -128,15 +152,13 @@ public class Algoritmos {
             NodoDistancia actual = cola.poll();
             User uActual = actual.getUser();
 
-            // Si ya encontramos un camino más corto, ignoramos este
+            // Entrada obsoleta: ya se encontró un camino más corto a uActual; se descarta.
             if (actual.getDistancia() > distancias.get(uActual)) continue;
 
-            // Revisamos los adyacentes
             for (Arista arista : grafo.getAdyacentes(uActual)) {
                 User vecino = arista.getDestino();
                 int nuevaDistancia = distancias.get(uActual) + arista.getPeso();
 
-                // Si el nuevo camino es más corto, actualizamos
                 if (nuevaDistancia < distancias.get(vecino)) {
                     distancias.put(vecino, nuevaDistancia);
                     cola.add(new NodoDistancia(vecino, nuevaDistancia));
@@ -146,7 +168,10 @@ public class Algoritmos {
         return distancias;
     }
 
-    // Clase interna auxiliar para la PriorityQueue
+    /**
+     * Par (usuario, distancia) para la cola de prioridad de Dijkstra:
+     * se ordena por distancia para siempre expandir el nodo más cercano al origen.
+     */
     private static class NodoDistancia {
         private User user;
         private int distancia;
@@ -160,19 +185,11 @@ public class Algoritmos {
         public int getDistancia() { return distancia; }
     }
 
-
     /**
-     * Indica si el grafo es conexo: hay exactamente un árbol de expansión mínima (una componente).
-     * Usa el algoritmo Prim por componentes para contar cuántos MST hay.
+     * Determina si el grafo es conexo (una sola componente).
+     * Usa Prim: si el bosque tiene exactamente un árbol, el grafo es conexo.
      */
     public static boolean esConexo(Grafo grafo) {
         return prim(grafo).getBosque().size() == 1;
     }
-
-
-
-
-
-
-    
 }
